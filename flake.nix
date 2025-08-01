@@ -5,54 +5,60 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs"; # ensure treefmt-nix uses the same nixpkgs
   };
-  outputs = { self, nixpkgs, treefmt-nix }: let
-    forAllSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+  outputs = {
+    self,
+    nixpkgs,
+    treefmt-nix,
+  }: let
+    forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
 
     # https://github.com/yinheli/sshw
     sshwVersion = "1.1.2";
-    sshw = system: nixpkgs.legacyPackages.${system}.buildGoModule {
-      pname = "sshw";
-      version = sshwVersion;
-      src = nixpkgs.legacyPackages.${system}.fetchFromGitHub {
-        owner = "yinheli";
-        repo = "sshw";
-        rev = "v${sshwVersion}";
-        hash = "sha256-Qr8ICRab85Gse5xb3qECjPNehj86yhvF68l2zSFCG/s=";
+    sshw = system:
+      nixpkgs.legacyPackages.${system}.buildGoModule {
+        pname = "sshw";
+        version = sshwVersion;
+        src = nixpkgs.legacyPackages.${system}.fetchFromGitHub {
+          owner = "yinheli";
+          repo = "sshw";
+          rev = "v${sshwVersion}";
+          hash = "sha256-Qr8ICRab85Gse5xb3qECjPNehj86yhvF68l2zSFCG/s=";
+        };
+        vendorHash = "sha256-xI605rup1XjFZj8HH6p3n0mnS1NaVVS2ZMkGuK/QRuY=";
+        meta = with nixpkgs.lib; {
+          description = "SSH client wrapper for automatic login";
+          homepage = "https://github.com/yinheli/sshw";
+          license = licenses.mit;
+        };
       };
-      vendorHash = "sha256-xI605rup1XjFZj8HH6p3n0mnS1NaVVS2ZMkGuK/QRuY=";
-      meta = with nixpkgs.lib; {
-        description = "SSH client wrapper for automatic login";
-        homepage = "https://github.com/yinheli/sshw";
-        license = licenses.mit;
-      };
-    };
 
-    sshwConfig = pkgs: pkgs.writeText ".sshw" ''
-      # NOTE: this file is created by the dev shell, edit that instead
-      - name: my-server1
-        user: myuser
-        host: 192.168.1.35
-        port: 22
-        password: 123456
-      - name: my-server2
-        user: myuser
-        host: 192.168.1.36
-        port: 22
-        password: 123456
-    '';
-  in
-  {
+    sshwConfig = pkgs:
+      pkgs.writeText ".sshw" ''
+        # NOTE: this file is created by the dev shell, edit that instead
+        - name: my-server1
+          user: myuser
+          host: 192.168.1.35
+          port: 22
+          password: 123456
+        - name: my-server2
+          user: myuser
+          host: 192.168.1.36
+          port: 22
+          password: 123456
+      '';
+  in {
     packages = forAllSystems (system: {
       sshw = sshw system;
     });
 
-    formatter = forAllSystems (system:
-      treefmt-nix.lib.mkWrapper (nixpkgs.legacyPackages.${system}) {
-        projectRootFile = "flake.nix";
-        programs = {
-          alejandra.enable = true;
-        };
-      }
+    formatter = forAllSystems (
+      system:
+        treefmt-nix.lib.mkWrapper (nixpkgs.legacyPackages.${system}) {
+          projectRootFile = "flake.nix";
+          programs = {
+            alejandra.enable = true;
+          };
+        }
     );
 
     devShells = forAllSystems (system: {
