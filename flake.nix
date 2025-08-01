@@ -24,6 +24,19 @@
         license = licenses.mit;
       };
     };
+
+    sshwConfig = pkgs: pkgs.writeText ".sshw" ''
+      - name: my-server1
+        user: myuser
+        host: 192.168.1.35
+        port: 22
+        password: 123456
+      - name: my-server2
+        user: myuser
+        host: 192.168.1.36
+        port: 22
+        password: 123456
+    '';
   in
   {
     packages = forAllSystems (system: {
@@ -41,6 +54,9 @@
           ripgrep
           (sshw system)
         ];
+        shellHook = ''
+          cp ${sshwConfig nixpkgs.legacyPackages.${system}} $HOME/.sshw
+        '';
       };
     });
   };
