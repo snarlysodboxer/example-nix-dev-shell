@@ -2,8 +2,10 @@
   description = "sshw and debug tools";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs"; # ensure treefmt-nix uses the same nixpkgs
   };
-  outputs = { self, nixpkgs }: let
+  outputs = { self, nixpkgs, treefmt-nix }: let
     forAllSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
     # https://github.com/yinheli/sshw
@@ -26,6 +28,7 @@
     };
 
     sshwConfig = pkgs: pkgs.writeText ".sshw" ''
+      # NOTE: this file is created by the dev shell, edit that instead
       - name: my-server1
         user: myuser
         host: 192.168.1.35
@@ -43,6 +46,15 @@
       sshw = sshw system;
     });
 
+    formatter = forAllSystems (system:
+      treefmt-nix.lib.mkWrapper (nixpkgs.legacyPackages.${system}) {
+        projectRootFile = "flake.nix";
+        programs = {
+          alejandra.enable = true;
+        };
+      }
+    );
+
     devShells = forAllSystems (system: {
       default = nixpkgs.legacyPackages.${system}.mkShellNoCC {
         name = "sshw";
@@ -55,7 +67,15 @@
           (sshw system)
         ];
         shellHook = ''
-          cp ${sshwConfig nixpkgs.legacyPackages.${system}} $HOME/.sshw
+          if [ ! -f "$HOME/.sshw" ]; then
+            cp ${sshwConfig nixpkgs.legacyPackages.${system}} $HOME/.sshw
+            echo "Created $HOME/.sshw"
+          else
+            if ! cmp -s ${sshwConfig nixpkgs.legacyPackages.${system}} "$HOME/.sshw"; then
+              echo "Warning: Your $HOME/.sshw is different than the provided config"
+              echo "Provided config available at: ${sshwConfig nixpkgs.legacyPackages.${system}}"
+            fi
+          fi
         '';
       };
     });
