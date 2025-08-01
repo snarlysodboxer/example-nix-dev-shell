@@ -86,7 +86,9 @@
           (sshw system)
         ];
         shellHook = ''
-          # $HOME/.sshw
+          export PS1="[nix:sshw] \w \$ "
+
+          # manage $HOME/.sshw
           if [ ! -f "$HOME/.sshw" ]; then
             cp ${sshwConfig nixpkgs.legacyPackages.${system}} $HOME/.sshw
             echo "Created $HOME/.sshw"
@@ -97,7 +99,7 @@
             fi
           fi
 
-          # ./treefmt.toml
+          # manage ./treefmt.toml
           if [ ! -f "./treefmt.toml" ]; then
             cp ${treefmtConfig nixpkgs.legacyPackages.${system}} ./treefmt.toml
             echo "Created treefmt.toml"
