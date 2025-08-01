@@ -34,7 +34,7 @@
 
     sshwConfig = pkgs:
       pkgs.writeText ".sshw" ''
-        # NOTE: this file is created by the dev shell, edit that instead
+        # NOTE: This file is created by the dev shell, edit flake.nix instead
         - name: my-server1
           user: myuser
           host: 192.168.1.35
@@ -45,6 +45,18 @@
           host: 192.168.1.36
           port: 22
           password: 123456
+      '';
+
+    treefmtConfig = pkgs:
+      pkgs.writeText "treefmt.toml" ''
+        # NOTE: This file is created by the dev shell, edit flake.nix instead
+
+        [formatter.alejandra]
+        command = "${pkgs.alejandra}/bin/alejandra"
+        includes = ["*.nix"]
+
+        [formatter.alejandra.options]
+        # Use default alejandra options
       '';
   in {
     packages = forAllSystems (system: {
@@ -70,9 +82,11 @@
           jq
           just
           ripgrep
+          treefmt
           (sshw system)
         ];
         shellHook = ''
+          # $HOME/.sshw
           if [ ! -f "$HOME/.sshw" ]; then
             cp ${sshwConfig nixpkgs.legacyPackages.${system}} $HOME/.sshw
             echo "Created $HOME/.sshw"
@@ -80,6 +94,17 @@
             if ! cmp -s ${sshwConfig nixpkgs.legacyPackages.${system}} "$HOME/.sshw"; then
               echo "Warning: Your $HOME/.sshw is different than the provided config"
               echo "Provided config available at: ${sshwConfig nixpkgs.legacyPackages.${system}}"
+            fi
+          fi
+
+          # ./treefmt.toml
+          if [ ! -f "./treefmt.toml" ]; then
+            cp ${treefmtConfig nixpkgs.legacyPackages.${system}} ./treefmt.toml
+            echo "Created treefmt.toml"
+          else
+            if ! cmp -s ${treefmtConfig nixpkgs.legacyPackages.${system}} "./treefmt.toml"; then
+              echo "Warning: Your treefmt.toml differs from the provided config"
+              echo "Provided config available at: ${treefmtConfig nixpkgs.legacyPackages.${system}}"
             fi
           fi
         '';
